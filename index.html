@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Crear Reporte</title>
+    <link rel="stylesheet" href="../main_report.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+   
+   <style>
+/* Estilos para el modal */
+.modal {
+    display: none; /* Oculto por defecto */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+   </style> 
+</head>
+<body>
+
+<section>
+    <h1>Crear un reporte</h1>
+    
+    <div class="form-container">
+
+        <!-- Formulario de creación de reportes -->
+        <form action="../includes/report_logic.php" method="POST" enctype="multipart/form-data">
+            <!-- Campos del formulario -->
+            <label for="reporter_name">Nombre del reportero:</label>
+            <input type="text" id="reporter_name" name="reporter_name" value="<?php echo htmlspecialchars($user->getNombre()); ?>" readonly required>
+
+            <label for="company_name">Nombre de la empresa:</label>
+            <input type="text" id="company_name" name="company_name" value="<?php echo htmlspecialchars($companyName); ?>" readonly required>
+
+            <label for="business_type">Tipo de empresa:</label>
+            <input type="text" id="business_type" name="business_type" value="<?php echo htmlspecialchars($businessType); ?>" readonly required>
+
+            <label for="address">Dirección:</label>
+            <input type="text" id="address" name="address" value="<?php echo htmlspecialchars($clientAddress); ?>" required>
+
+            <label for="phone_number">Número de teléfono:</label>
+            <input type="text" id="phone_number" name="phone_number" value="<?php echo htmlspecialchars($phone); ?>" required>
+
+            <label for="email">Correo electrónico:</label>
+            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($email); ?>" required>
+            
+              <!-- Botón para abrir el modal de QR -->
+    <button type="button" id="openQrModalButton">Escanear QR</button>
+
+<!-- Modal para la cámara -->
+<div id="qrModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Escanea el Código QR</h2>
+        <div id="qr-reader" style="width: 300px; height: 300px;"></div>
+    </div>
+</div>
+
+            <label for="serial_number">Número de serie:</label>
+            <input type="text" id="serial_number" name="serial_number" required>
+
+            <label for="denomination">Denominación:</label>
+            <input type="text" id="denomination" name="denomination" required>
+
+            <label for="classification">Clasificación:</label>
+            <input type="text" id="classification" name="classification" required>
+
+            <label for="problem_description">Descripción del problema:</label>
+            <textarea id="problem_description" name="problem_description" required></textarea>
+
+            <label for="reception_time">Hora de recepción:</label>
+            <input type="time" id="reception_time" name="reception_time" value="<?php echo date('H:i'); ?>" min="07:00" max="23:00" required>
+
+            <input type="hidden" name="report_date" value="<?php echo $currentDate; ?>">
+
+            <label for="additional_instruction">¿Existe algún protocolo para que el técnico pueda ingresar? Descríbelo:</label>
+            <textarea id="additional_instruction" name="additional_instruction"></textarea>
+
+            <!-- insertar imagenes -->
+            <div class="drop-area" id="drop-area">
+                Arrastra y suelta tus archivos aquí o 
+                <!-- <input type="file" id="file-input" multiple> -->
+                <input type="file" name="files[]" id="file-input" multiple>
+            </div>
+            <div class="file-preview" id="file-preview"></div>
+            <div class="error-message" id="error-message"></div>
+            <button type="submit">Enviar Reporte</button>
+        </form>
+        <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const modal = document.getElementById("qrModal");
+        const btn = document.getElementById("openQrModalButton");
+        const span = document.getElementsByClassName("close")[0];
+        let qrCodeReader;
+
+        // Función para inicializar el escáner de QR
+        function startQrScanner() {
+            // Verificamos si ya hay un escáner inicializado
+            if (!qrCodeReader) {
+                qrCodeReader = new Html5Qrcode("qr-reader");
+            }
+
+            qrCodeReader.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                (decodedText) => {
+                    // Procesar el texto escaneado del QR
+                    try {
+                        const data = JSON.parse(decodedText);
+                        document.getElementById("serial_number").value = data.serial_number || '';
+                        document.getElementById("denomination").value = data.denomination || '';
+                        document.getElementById("classification").value = data.classification || '';
+                    } catch (e) {
+                        alert("El formato del QR no es válido");
+                    }
+                    modal.style.display = "none";
+                    qrCodeReader.stop().then(() => {
+                        qrCodeReader.clear();
+                    });
+                },
+                (errorMessage) => {
+                    console.warn(`QR code scanning error: ${errorMessage}`);
+                }
+            ).catch(err => {
+                console.error(`Unable to start scanning, error: ${err}`);
+            });
+        }
+
+        // Función para detener el escáner
+        function stopQrScanner() {
+            if (qrCodeReader) {
+                qrCodeReader.stop().then(() => {
+                    qrCodeReader.clear();
+                }).catch(err => {
+                    console.error(`Error stopping scanner: ${err}`);
+                });
+            }
+        }
+
+        // Mostrar el modal y empezar el escaneo
+        btn.onclick = function() {
+            modal.style.display = "block";
+            startQrScanner();
+        }
+
+        // Cerrar el modal y detener el escaneo
+        span.onclick = function() {
+            modal.style.display = "none";
+            stopQrScanner();
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+                stopQrScanner();
+            }
+        }
+    });
+</script>
+
+
+
+<script>
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const filePreview = document.getElementById('file-preview');
+    const errorMessage = document.getElementById('error-message');
+    let imageCount = 0;
+    let videoCount = 0;
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+    const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 10 MB
+
+    // Arrastrar archivos
+    dropArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+    });
+
+    dropArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        const files = event.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    // Seleccionar archivos
+    fileInput.addEventListener('change', (event) => {
+        const files = event.target.files;
+        handleFiles(files);
+    });
+
+    // Manejar archivos
+    function handleFiles(files) {
+        errorMessage.textContent = ''; // Limpiar mensajes de error
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            // Verificar el tipo de archivo y contar
+            if (file.type.startsWith('image/')) {
+                if (imageCount < 3 && file.size <= MAX_IMAGE_SIZE) {
+                    addFileToPreview(file, true);
+                    imageCount++;
+                } else if (file.size > MAX_IMAGE_SIZE) {
+                    errorMessage.textContent = 'El tamaño máximo para imágenes es de 5 MB.';
+                } else {
+                    errorMessage.textContent = 'Solo se pueden subir hasta 3 imágenes.';
+                }
+            } else if (file.type.startsWith('video/')) {
+                if (videoCount < 3 && file.size <= MAX_VIDEO_SIZE) {
+                    addFileToPreview(file, false);
+                    videoCount++;
+                } else if (file.size > MAX_VIDEO_SIZE) {
+                    errorMessage.textContent = 'El tamaño máximo para videos es de 20 MB.';
+                } else {
+                    errorMessage.textContent = 'Solo se pueden subir hasta 3 videos.';
+                }
+            } else {
+                errorMessage.textContent = 'Solo se permiten imágenes y videos.';
+            }
+        }
+    }
+
+    // Agregar archivos al área de vista previa
+    function addFileToPreview(file, isImage) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-button';
+        removeButton.textContent = '×';
+        removeButton.onclick = () => {
+            fileItem.remove();
+            if (isImage) {
+                imageCount--;
+            } else {
+                videoCount--;
+            }
+        };
+
+        if (isImage) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            fileItem.appendChild(img);
+        } else {
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.controls = true;
+            video.width = 100;
+            video.height = 100;
+            fileItem.appendChild(video);
+        }
+
+        fileItem.appendChild(removeButton);
+        filePreview.appendChild(fileItem);
+    }
+</script>
+</section>
+
+</body>
+</html>
